@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -6,18 +6,23 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
-
+	"github.com/joeychilson/ai-chat/ui"
 	"github.com/joeychilson/ai/anthropic"
 )
 
-func main() {
-	anthropicClient := anthropic.New(os.Getenv("ANTHROPIC_API_KEY"))
+type Server struct {
+	anthropic *anthropic.Client
+}
 
+func New(anthropic *anthropic.Client) *Server {
+	return &Server{anthropic: anthropic}
+}
+
+func (s *Server) Router() http.Handler {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
@@ -31,19 +36,18 @@ func main() {
 		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type"},
 	}))
 
-	router.Post("/chat", handleChat(anthropicClient))
+	router.Mount("/", ui.Handler())
+	router.Post("/chat", s.handleChat())
 
-	log.Println("Server is running on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", router))
+	return router
 }
 
-type ChatRequest struct {
-	Message string `json:"message"`
-}
-
-func handleChat(client *anthropic.Client) http.HandlerFunc {
+func (s *Server) handleChat() http.HandlerFunc {
+	type request struct {
+		Message string `json:"message"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req ChatRequest
+		var req request
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Println("Unable to parse request body:", err)
 			http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -62,7 +66,7 @@ func handleChat(client *anthropic.Client) http.HandlerFunc {
 			MaxTokens: 1054,
 		}
 
-		err := client.ChatStream(r.Context(), llmReq, func(ctx context.Context, event anthropic.Event) {
+		err := s.anthropic.ChatStream(r.Context(), llmReq, func(ctx context.Context, event anthropic.Event) {
 			jsonStr, err := json.Marshal(event)
 			if err != nil {
 				log.Println("Unable to marshal event:", err)

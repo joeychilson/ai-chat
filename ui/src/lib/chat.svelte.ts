@@ -1,4 +1,3 @@
-import { env } from '$env/dynamic/public';
 import { SSE, type SSEvent } from 'sse.js';
 
 class ChatStore {
@@ -12,7 +11,7 @@ export default function useChat() {
 	async function sendMessage(message: string) {
 		store.messages.push({ role: 'user', content: message });
 
-		const eventSource = new SSE(env.PUBLIC_CHAT_API, {
+		const eventSource = new SSE('/chat', {
 			headers: {
 				'Content-Type': 'application/json'
 			},
