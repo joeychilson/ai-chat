@@ -8,6 +8,7 @@ class ChatStore {
 export interface ChatRequest {
 	message: string;
 	max_tokens?: number;
+	temperature?: number;
 }
 
 export default function useChat() {
@@ -20,7 +21,11 @@ export default function useChat() {
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			payload: JSON.stringify({ message: req.message, max_tokens: req.max_tokens })
+			payload: JSON.stringify({
+				message: req.message,
+				max_tokens: req.max_tokens,
+				temperature: req.temperature
+			})
 		});
 
 		eventSource.addEventListener('error', () => {

@@ -45,8 +45,9 @@ func (s *Server) Router() http.Handler {
 }
 
 type ChatRequest struct {
-	Message   string `json:"message"`
-	MaxTokens int    `json:"max_tokens"`
+	Message     string  `json:"message"`
+	MaxTokens   int     `json:"max_tokens"`
+	Temperature float32 `json:"temperature,omitempty"`
 }
 
 func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +71,8 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 		Messages: []anthropic.Message{
 			anthropic.UserMessage{Content: []anthropic.Content{anthropic.TextContent{Text: req.Message}}},
 		},
-		MaxTokens: req.MaxTokens,
+		MaxTokens:   req.MaxTokens,
+		Temperature: req.Temperature,
 	}
 
 	err := s.anthropic.ChatStream(r.Context(), llmReq, func(ctx context.Context, event anthropic.Event) {
