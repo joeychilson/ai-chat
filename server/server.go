@@ -1,9 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -70,19 +72,67 @@ func (s *Server) handleChat() http.HandlerFunc {
 			jsonStr, err := json.Marshal(event)
 			if err != nil {
 				log.Println("Unable to marshal event:", err)
-				fmt.Fprintf(w, "event: error\ndata: {\"message\": \"Internal Server Error\"}\n\n")
+				e := &Event{
+					Event: []byte("error"),
+					Data:  []byte("{\"message\": \"Internal Server Error\"}"),
+				}
+				if err := e.Write(w); err != nil {
+					log.Println("Unable to write event:", err)
+					return
+				}
 				w.(http.Flusher).Flush()
 				return
 			}
-			fmt.Fprintf(w, "data: %s\n\n", string(jsonStr))
+			e := &Event{Data: jsonStr}
+			if err := e.Write(w); err != nil {
+				log.Println("Unable to write event:", err)
+				return
+			}
 			w.(http.Flusher).Flush()
 		})
 
 		if err != nil {
 			log.Println("Unable to chat:", err)
-			fmt.Fprintf(w, "event: error\ndata: {\"message\": \"Internal Server Error\"}\n\n")
+			e := &Event{
+				Event: []byte("error"),
+				Data:  []byte("{\"message\": \"Internal Server Error\"}"),
+			}
+			if err := e.Write(w); err != nil {
+				log.Println("Unable to write event:", err)
+				return
+			}
 			w.(http.Flusher).Flush()
 			return
 		}
 	}
+}
+
+// Event represents a server-sent event.
+type Event struct {
+	Event []byte
+	Data  []byte
+}
+
+// WriteTo writes the event to the writer.
+func (e *Event) Write(w io.Writer) error {
+	if len(e.Data) == 0 {
+		return nil
+	}
+	if len(e.Data) > 0 {
+		sd := bytes.Split(e.Data, []byte("\n"))
+		for i := range sd {
+			if _, err := fmt.Fprintf(w, "data: %s\n", sd[i]); err != nil {
+				return err
+			}
+		}
+		if len(e.Event) > 0 {
+			if _, err := fmt.Fprintf(w, "event: %s\n", e.Event); err != nil {
+				return err
+			}
+		}
+	}
+	if _, err := fmt.Fprint(w, "\n"); err != nil {
+		return err
+	}
+	return nil
 }

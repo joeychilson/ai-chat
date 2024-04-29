@@ -1,8 +1,8 @@
 import { SSE, type SSEvent } from 'sse.js';
+import { toast } from 'svelte-sonner';
 
 class ChatStore {
 	messages: { role: string; content: string }[] = $state([]);
-	errors: { message: string }[] = $state([]);
 }
 
 export default function useChat() {
@@ -18,9 +18,8 @@ export default function useChat() {
 			payload: JSON.stringify({ message })
 		});
 
-		eventSource.addEventListener('error', (event: SSEvent) => {
-			const error: Error = JSON.parse(event.data);
-			store.errors.push({ message: error.message });
+		eventSource.addEventListener('error', () => {
+			toast.error('An error occurred while sending the message');
 		});
 
 		let currentContentBlock: ContentBlock | undefined;
