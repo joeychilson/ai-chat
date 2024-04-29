@@ -5,17 +5,22 @@ class ChatStore {
 	messages: { role: string; content: string }[] = $state([]);
 }
 
+export interface ChatRequest {
+	message: string;
+	max_tokens?: number;
+}
+
 export default function useChat() {
 	const store = new ChatStore();
 
-	async function sendMessage(message: string) {
-		store.messages.push({ role: 'user', content: message });
+	async function sendMessage(req: ChatRequest) {
+		store.messages.push({ role: 'user', content: req.message });
 
 		const eventSource = new SSE('/chat', {
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			payload: JSON.stringify({ message })
+			payload: JSON.stringify({ message: req.message, max_tokens: req.max_tokens })
 		});
 
 		eventSource.addEventListener('error', () => {

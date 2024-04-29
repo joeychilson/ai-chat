@@ -1,17 +1,22 @@
 <script lang="ts">
-	import { Button } from "$lib/components/ui/button";
-	import { Input } from "$lib/components/ui/input";
-	import useChat from '$lib/chat.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import useChat, { type ChatRequest } from '$lib/chat.svelte';
 	import { marked } from 'marked';
 
 	const chat = useChat();
 
-	let inputMessage = '';
+	let message = '';
+	let maxTokens = 100;
 
 	function handleSendMessage() {
-		if (inputMessage.trim() !== '') {
-			chat.sendMessage(inputMessage.trim());
-			inputMessage = '';
+		if (message.trim() !== '') {
+			const req: ChatRequest = {
+				message: message.trim(),
+				max_tokens: maxTokens
+			};
+			chat.sendMessage(req);
+			message = '';
 		}
 	}
 
@@ -35,14 +40,25 @@
 			</div>
 		{/each}
 	</div>
-	<div class="flex p-4 input-container">
-		<Input
-			type="text"
-			bind:value={inputMessage}
-			on:keypress={handleKeyPress}
-			placeholder="Type your message..."
-			class="flex-1 px-2 py-1 text-base"
-		/>
-		<Button class="ml-4 px-4 py-2 text-base" on:click={handleSendMessage}>Send</Button>
+	<div class="p-4 input-container">
+		<div class="flex items-center mb-4">
+			<label for="max-tokens" class="mr-2">Max Tokens:</label>
+			<Input
+				id="max-tokens"
+				type="number"
+				bind:value={maxTokens}
+				class="w-24 px-2 py-1 text-base"
+			/>
+		</div>
+		<div class="flex">
+			<Input
+				type="text"
+				bind:value={message}
+				on:keypress={handleKeyPress}
+				placeholder="Type your message..."
+				class="flex-1 px-2 py-1 text-base"
+			/>
+			<Button class="ml-4 px-4 py-2 text-base" on:click={handleSendMessage}>Send</Button>
+		</div>
 	</div>
 </div>

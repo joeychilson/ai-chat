@@ -39,60 +39,44 @@ func (s *Server) Router() http.Handler {
 	}))
 
 	router.Mount("/", ui.Handler())
-	router.Post("/chat", s.handleChat())
+	router.Post("/chat", s.handleChat)
 
 	return router
 }
 
-func (s *Server) handleChat() http.HandlerFunc {
-	type request struct {
-		Message string `json:"message"`
+type ChatRequest struct {
+	Message   string `json:"message"`
+	MaxTokens int    `json:"max_tokens"`
+}
+
+func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
+	var req ChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Println("Unable to parse request body:", err)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
 	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req request
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Println("Unable to parse request body:", err)
-			http.Error(w, "Bad Request", http.StatusBadRequest)
-			return
-		}
 
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
+	if req.MaxTokens == 0 {
+		req.MaxTokens = 64
+	}
 
-		llmReq := &anthropic.ChatRequest{
-			Model: anthropic.ModelClaude3_Haiku,
-			Messages: []anthropic.Message{
-				anthropic.UserMessage{Content: []anthropic.Content{anthropic.TextContent{Text: req.Message}}},
-			},
-			MaxTokens: 1054,
-		}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
 
-		err := s.anthropic.ChatStream(r.Context(), llmReq, func(ctx context.Context, event anthropic.Event) {
-			jsonStr, err := json.Marshal(event)
-			if err != nil {
-				log.Println("Unable to marshal event:", err)
-				e := &Event{
-					Event: []byte("error"),
-					Data:  []byte("{\"message\": \"Internal Server Error\"}"),
-				}
-				if err := e.Write(w); err != nil {
-					log.Println("Unable to write event:", err)
-					return
-				}
-				w.(http.Flusher).Flush()
-				return
-			}
-			e := &Event{Data: jsonStr}
-			if err := e.Write(w); err != nil {
-				log.Println("Unable to write event:", err)
-				return
-			}
-			w.(http.Flusher).Flush()
-		})
+	llmReq := &anthropic.ChatRequest{
+		Model: anthropic.ModelClaude3_Haiku,
+		Messages: []anthropic.Message{
+			anthropic.UserMessage{Content: []anthropic.Content{anthropic.TextContent{Text: req.Message}}},
+		},
+		MaxTokens: req.MaxTokens,
+	}
 
+	err := s.anthropic.ChatStream(r.Context(), llmReq, func(ctx context.Context, event anthropic.Event) {
+		jsonStr, err := json.Marshal(event)
 		if err != nil {
-			log.Println("Unable to chat:", err)
+			log.Println("Unable to marshal event:", err)
 			e := &Event{
 				Event: []byte("error"),
 				Data:  []byte("{\"message\": \"Internal Server Error\"}"),
@@ -104,6 +88,26 @@ func (s *Server) handleChat() http.HandlerFunc {
 			w.(http.Flusher).Flush()
 			return
 		}
+		e := &Event{Data: jsonStr}
+		if err := e.Write(w); err != nil {
+			log.Println("Unable to write event:", err)
+			return
+		}
+		w.(http.Flusher).Flush()
+	})
+
+	if err != nil {
+		log.Println("Unable to chat:", err)
+		e := &Event{
+			Event: []byte("error"),
+			Data:  []byte("{\"message\": \"Internal Server Error\"}"),
+		}
+		if err := e.Write(w); err != nil {
+			log.Println("Unable to write event:", err)
+			return
+		}
+		w.(http.Flusher).Flush()
+		return
 	}
 }
 
