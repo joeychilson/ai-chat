@@ -41,7 +41,7 @@
 		{#each chat.store.messages as message}
 			<div class="mb-4 message">
 				<div class="font-bold role">{message.role}:</div>
-				<div class="prose ml-4 content">{@html marked(message.content)}</div>
+				<div class="prose dark:prose-invert ml-4 content">{@html marked(message.content)}</div>
 			</div>
 		{/each}
 	</div>
