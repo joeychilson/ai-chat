@@ -8,6 +8,7 @@
 	const chat = useChat();
 
 	let message = '';
+	let system = '';
 	let maxTokens = 100;
 	let temperature = 1.0;
 
@@ -15,6 +16,7 @@
 		if (message.trim() !== '') {
 			const req: ChatRequest = {
 				message: message.trim(),
+				system: system.trim(),
 				max_tokens: maxTokens,
 				temperature: temperature
 			};
@@ -60,6 +62,8 @@
 				bind:value={temperature}
 				class="w-24 px-2 py-1 text-base"
 			/>
+			<Label for="system">System Prompt:</Label>
+			<Input id="system" type="text" bind:value={system} class="px-2 py-1 text-base w-full" />
 		</div>
 		<div class="flex">
 			<Input

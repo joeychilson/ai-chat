@@ -46,7 +46,8 @@ func (s *Server) Router() http.Handler {
 
 type ChatRequest struct {
 	Message     string  `json:"message"`
-	MaxTokens   int     `json:"max_tokens"`
+	System      string  `json:"system,omitempty"`
+	MaxTokens   int     `json:"max_tokens,omitempty"`
 	Temperature float32 `json:"temperature,omitempty"`
 }
 
@@ -67,7 +68,8 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 
 	llmReq := &anthropic.ChatRequest{
-		Model: anthropic.ModelClaude3_Haiku,
+		Model:  anthropic.ModelClaude3_Haiku,
+		System: req.System,
 		Messages: []anthropic.Message{
 			anthropic.UserMessage{Content: []anthropic.Content{anthropic.TextContent{Text: req.Message}}},
 		},

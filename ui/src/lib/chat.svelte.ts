@@ -7,6 +7,7 @@ class ChatStore {
 
 export interface ChatRequest {
 	message: string;
+	system?: string;
 	max_tokens?: number;
 	temperature?: number;
 }
@@ -23,6 +24,7 @@ export default function useChat() {
 			},
 			payload: JSON.stringify({
 				message: req.message,
+				system: req.system,
 				max_tokens: req.max_tokens,
 				temperature: req.temperature
 			})
